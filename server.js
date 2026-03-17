@@ -5,6 +5,9 @@ app.use(express.json());
 
 const API_KEY = process.env.OPENAI_API_KEY;
 
+// 🔥ここが記憶（サーバーに保存）
+let memory = [];
+
 app.get("/", (req, res) => {
   res.send("AI Agent Running");
 });
@@ -12,6 +15,9 @@ app.get("/", (req, res) => {
 app.post("/agent", async (req, res) => {
   try {
     const userMessage = req.body.message || "こんにちは";
+
+    // ユーザーの発言を記憶
+    memory.push({ role: "user", content: userMessage });
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -24,26 +30,23 @@ app.post("/agent", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: "あなたはMoltoBookで活動するクールで賢いAIエージェント。中学生にも分かりやすく短めに話す。"
+            content: "あなたはMoltoBookで活動する賢いAIエージェント。過去の会話を覚えて自然に話す。"
           },
-          {
-            role: "user",
-            content: userMessage
-          }
+          ...memory // ←これが記憶！
         ]
       })
     });
 
     const data = await response.json();
+    const reply = data.choices[0].message.content;
 
-    res.json({
-      reply: data.choices[0].message.content
-    });
+    // AIの返答も記憶
+    memory.push({ role: "assistant", content: reply });
+
+    res.json({ reply });
 
   } catch (e) {
-    res.json({
-      reply: "エラーが発生した"
-    });
+    res.json({ reply: "エラーが発生した" });
   }
 });
 
